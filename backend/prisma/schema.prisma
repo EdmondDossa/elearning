@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Level {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model User {
+  id           String           @id @default(uuid())
+  email        String           @unique
+  passwordHash String
+  name         String
+  role         Role             @default(USER)
+  createdAt    DateTime         @default(now())
+  enrollments  Enrollment[]
+  progress     ModuleProgress[]
+}
+
+model Course {
+  id           String       @id @default(uuid())
+  title        String
+  instructor   String
+  language     String
+  level        Level
+  description  String
+  thumbnailUrl String?
+  createdAt    DateTime     @default(now())
+  modules      Module[]
+  enrollments  Enrollment[]
+
+  @@index([language, level])
+}
+
+model Module {
+  id          String           @id @default(uuid())
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
+  durationSec Int
+  videoUrl    String
+  audioTracks AudioTrack[]
+  subtitles   Subtitle[]
+  progress    ModuleProgress[]
+
+  @@unique([courseId, order])
+}
+
+model AudioTrack {
+  id        String  @id @default(uuid())
+  moduleId  String
+  module    Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  language  String
+  label     String
+  url       String
+  isDefault Boolean @default(false)
+
+  @@unique([moduleId, language])
+}
+
+model Subtitle {
+  id       String @id @default(uuid())
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  language String
+  label    String
+  url      String
+
+  @@unique([moduleId, language])
+}
+
+model Enrollment {
+  userId    String
+  courseId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, courseId])
+}
+
+model ModuleProgress {
+  userId      String
+  moduleId    String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  positionSec Int       @default(0)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@id([userId, moduleId])
+}
