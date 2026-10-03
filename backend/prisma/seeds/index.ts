@@ -21,6 +21,14 @@ async function reset() {
 }
 
 async function main() {
+  if (
+    process.env.SEED_IF_EMPTY === 'true' &&
+    (await prisma.course.count()) > 0
+  ) {
+    console.log('Base déjà initialisée, seed ignoré');
+    return;
+  }
+
   await reset();
 
   const users = await seedUsers(prisma);
