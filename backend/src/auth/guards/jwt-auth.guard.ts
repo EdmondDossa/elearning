@@ -21,10 +21,22 @@ export class JwtAuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = request.cookies?.[AUTH_COOKIE] as string | undefined;
+
+    if (isPublic) {
+      // Route publique : on identifie l'utilisateur si possible, sans jamais bloquer
+      if (token) {
+        try {
+          request.user = await this.jwt.verifyAsync<JwtPayload>(token);
+        } catch {
+          /* token invalide ou expiré : on continue en anonyme */
+        }
+      }
+      return true;
+    }
+
     if (!token) throw new UnauthorizedException('Authentification requise');
 
     try {
