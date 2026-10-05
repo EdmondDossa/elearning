@@ -15,6 +15,7 @@ export default function DashboardPage() {
 
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
     if (authLoading) return;
@@ -24,7 +25,10 @@ export default function DashboardPage() {
       return;
     }
     api<Dashboard>("/dashboard")
-      .then(setData)
+      .then((dashboard) => {
+        setNow(Date.now());
+        setData(dashboard);
+      })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 401)
           router.replace("/login?next=/dashboard");
@@ -85,7 +89,7 @@ export default function DashboardPage() {
               <h2 className="mb-3 text-xl font-semibold">En cours</h2>
               <ul className="space-y-3">
                 {inProgress.map((c) => (
-                  <DashboardCourse key={c.id} course={c} />
+                  <DashboardCourse key={c.id} course={c} now={now} />
                 ))}
               </ul>
             </section>
@@ -95,7 +99,7 @@ export default function DashboardPage() {
               <h2 className="mb-3 text-xl font-semibold">Terminées</h2>
               <ul className="space-y-3">
                 {completed.map((c) => (
-                  <DashboardCourse key={c.id} course={c} />
+                  <DashboardCourse key={c.id} course={c} now={now} />
                 ))}
               </ul>
             </section>

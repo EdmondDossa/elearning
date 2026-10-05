@@ -51,3 +51,28 @@ erDiagram
 
 `/login`, `/register`, `/courses` (catalogue), `/courses/[id]` (détail),
 `/learn/[moduleId]` (lecteur, protégée), `/dashboard` (protégée).
+
+## Administration implémentée
+
+Les pages `/admin`, `/admin/courses/new` et `/admin/courses/[id]` permettent
+de gérer les formations et leurs modules. Toutes les routes ci-dessous exigent
+une session avec le rôle `ADMIN` et utilisent le préfixe `/api`.
+
+| Méthode | Route | Fonction |
+| --- | --- | --- |
+| GET | /admin/courses | Liste des formations avec compteurs |
+| GET | /admin/courses/:id | Formation et modules avec pistes |
+| POST | /admin/courses | Création d’une formation |
+| PATCH | /admin/courses/:id | Modification d’une formation |
+| DELETE | /admin/courses/:id | Suppression d’une formation |
+| POST | /admin/courses/:id/modules | Ajout d’un module |
+| PATCH | /admin/modules/:id | Modification d’un module |
+| DELETE | /admin/modules/:id | Suppression d’un module |
+| GET | /admin/media | Liste des fichiers vidéo, audio et sous-titres |
+
+Les médias sont des fichiers du répertoire `backend/media`, copiés dans l’image
+Docker du backend. Les modules et pistes stockent leurs URL locales `/media/...`.
+L’import de fichiers est hors périmètre de l’exercice ; aucune route d’import
+n’est prévue. Voir le
+[guide d’administration](03-administration.md) pour la préparation et l’association
+des médias.

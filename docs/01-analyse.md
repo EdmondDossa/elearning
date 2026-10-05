@@ -9,7 +9,7 @@ vidéo/audio, avec doublage multilingue et suivi de progression.
 
 - **Visiteur** : non connecté, peut s'inscrire ou se connecter.
 - **Apprenant** : connecté, consulte le catalogue, suit des formations.
-- **Administrateur** (bonus) : gère les formations et modules.
+- **Administrateur** : gère les formations et modules (interface implémentée).
 
 ## Exigences fonctionnelles (user stories)
 
@@ -48,3 +48,14 @@ vidéo/audio, avec doublage multilingue et suivi de progression.
 - **Must** : US1 à US11, Docker, doc, tests de base, déploiement.
 - **Should** : sous-titres, responsive.
 - **Could** : favoris, quiz, interface admin.
+
+## État de l’administration
+
+L’interface admin, initialement prévue en bonus, permet maintenant de créer,
+modifier et supprimer les formations et modules, et d’associer des vidéos,
+pistes audio et sous-titres déjà présents sur le serveur.
+
+L’import de fichiers depuis le navigateur n’est pas demandé par l’énoncé et
+reste hors périmètre. Les médias préchargés permettent de démontrer la lecture
+et le doublage multilingue simulé attendus. Le parcours est décrit dans le
+[guide d’administration](03-administration.md).
