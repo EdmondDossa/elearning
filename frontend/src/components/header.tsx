@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { Button } from './ui/button';
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { Button } from "./ui/button";
 
 const linkClass = (active: boolean) =>
   `rounded-lg px-3 py-2 text-sm font-medium transition ${
-    active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+    active
+      ? "bg-indigo-50 text-indigo-700"
+      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
   }`;
 
 export function Header() {
@@ -17,7 +19,7 @@ export function Header() {
 
   async function handleLogout() {
     await logout();
-    router.replace('/login');
+    router.replace("/login");
   }
 
   return (
@@ -28,12 +30,26 @@ export function Header() {
             LearnHub
           </Link>
           <nav className="flex gap-1">
-            <Link href="/courses" className={linkClass(pathname.startsWith('/courses'))}>
+            <Link
+              href="/courses"
+              className={linkClass(pathname.startsWith("/courses"))}
+            >
               Catalogue
             </Link>
             {user && (
-              <Link href="/dashboard" className={linkClass(pathname.startsWith('/dashboard'))}>
+              <Link
+                href="/dashboard"
+                className={linkClass(pathname.startsWith("/dashboard"))}
+              >
                 Mon tableau de bord
+              </Link>
+            )}
+            {user?.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                className={linkClass(pathname.startsWith("/admin"))}
+              >
+                Administration
               </Link>
             )}
           </nav>
@@ -44,14 +60,16 @@ export function Header() {
             <div className="h-9 w-32 animate-pulse rounded-lg bg-slate-100" />
           ) : user ? (
             <>
-              <span className="hidden text-sm text-slate-600 sm:inline">{user.name}</span>
+              <span className="hidden text-sm text-slate-600 sm:inline">
+                {user.name}
+              </span>
               <Button variant="secondary" onClick={handleLogout}>
                 Déconnexion
               </Button>
             </>
           ) : (
             <>
-              <Link href="/login" className={linkClass(pathname === '/login')}>
+              <Link href="/login" className={linkClass(pathname === "/login")}>
                 Connexion
               </Link>
               <Link
