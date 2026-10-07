@@ -8,7 +8,7 @@ import { QueryCoursesDto } from './dto/query-courses.dto';
 export class CoursesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll({ search, language, level }: QueryCoursesDto) {
+  async findAll({ search, language, level }: QueryCoursesDto, userId?: string) {
     const where: Prisma.CourseWhereInput = {
       ...(language && { language }),
       ...(level && { level }),
@@ -35,10 +35,60 @@ export class CoursesService {
       },
     });
 
-    return courses.map(({ _count, ...course }) => ({
-      ...course,
-      modulesCount: _count.modules,
-    }));
+    // Requêtes groupées, limitées aux résultats et à l'utilisateur courant.
+    const courseIds = courses.map((course) => course.id);
+    const [enrollments, activity] =
+      userId && courseIds.length
+        ? await Promise.all([
+            this.prisma.enrollment.findMany({
+              where: { userId, courseId: { in: courseIds } },
+              select: { courseId: true },
+            }),
+            this.prisma.moduleProgress.findMany({
+              where: { userId, module: { courseId: { in: courseIds } } },
+              select: {
+                completed: true,
+                positionSec: true,
+                module: { select: { courseId: true } },
+              },
+            }),
+          ])
+        : [[], []];
+    const enrolled = new Set(enrollments.map((entry) => entry.courseId));
+    const progressByCourse = new Map<
+      string,
+      { completed: number; started: boolean }
+    >();
+    for (const entry of activity) {
+      const progress = progressByCourse.get(entry.module.courseId) ?? {
+        completed: 0,
+        started: false,
+      };
+      if (entry.completed) progress.completed++;
+      progress.started ||= entry.completed || entry.positionSec > 0;
+      progressByCourse.set(entry.module.courseId, progress);
+    }
+    return courses.map(({ _count, ...course }) => {
+      const activity = progressByCourse.get(course.id);
+      const completedModules = activity?.completed ?? 0;
+      const status =
+        _count.modules > 0 && completedModules === _count.modules
+          ? ('COMPLETED' as const)
+          : activity?.started
+            ? ('IN_PROGRESS' as const)
+            : ('NOT_STARTED' as const);
+      return {
+        ...course,
+        modulesCount: _count.modules,
+        learning: enrolled.has(course.id)
+          ? {
+              status,
+              completedModules,
+              progress: computeProgress(completedModules, _count.modules),
+            }
+          : null,
+      };
+    });
   }
 
   async getFilters() {

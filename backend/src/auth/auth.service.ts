@@ -3,11 +3,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { AuthSessionService } from './auth-session.service';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PublicUser, toPublicUser, UsersService } from '../users/users.service';
-import { JwtPayload } from './auth.types';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -15,7 +14,7 @@ import { RegisterDto } from './dto/register.dto';
 export class AuthService {
   constructor(
     private readonly users: UsersService,
-    private readonly jwt: JwtService,
+    private readonly sessions: AuthSessionService,
   ) {}
 
   async register(
@@ -32,7 +31,7 @@ export class AuthService {
         name: dto.name,
         passwordHash,
       });
-      return { user, token: await this.sign(user) };
+      return { user, token: await this.sessions.issue(user) };
     } catch (e) {
       // Deux inscriptions simultanées avec le même email : la contrainte unique tranche
       if (
@@ -56,11 +55,6 @@ export class AuthService {
     }
 
     const publicUser = toPublicUser(user);
-    return { user: publicUser, token: await this.sign(publicUser) };
-  }
-
-  private sign(user: PublicUser): Promise<string> {
-    const payload: JwtPayload = { sub: user.id, role: user.role };
-    return this.jwt.signAsync(payload);
+    return { user: publicUser, token: await this.sessions.issue(publicUser) };
   }
 }

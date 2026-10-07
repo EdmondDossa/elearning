@@ -1,6 +1,13 @@
 import {
+  ApiTags,
+  ApiOperation,
+  ApiCookieAuth,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import {
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Post,
@@ -12,25 +19,38 @@ import { Public } from '../auth/decorators/public.decorator';
 import { CoursesService } from './courses.service';
 import { QueryCoursesDto } from './dto/query-courses.dto';
 
+@ApiTags('Formations')
 @Controller('courses')
 export class CoursesController {
   constructor(private readonly courses: CoursesService) {}
 
   @Public()
   @Get()
-  findAll(@Query() query: QueryCoursesDto) {
-    return this.courses.findAll(query);
+  @Header('Cache-Control', 'private, no-store')
+  @Header('Vary', 'Cookie')
+  @ApiOperation({
+    summary: 'Rechercher et filtrer le catalogue',
+    description:
+      'Avec une session valide, learning contient le statut et la progression des formations suivies. Sinon, learning vaut null. Le statut distingue inscription sans lecture, activité et tous les modules terminés.',
+  })
+  findAll(
+    @Query() query: QueryCoursesDto,
+    @CurrentUser() user: JwtPayload | undefined,
+  ) {
+    return this.courses.findAll(query, user?.sub);
   }
 
   // Déclarée AVANT ':id', sinon "filters" serait interprété comme un identifiant
   @Public()
   @Get('filters')
+  @ApiOperation({ summary: 'Lister les langues et niveaux disponibles' })
   getFilters() {
     return this.courses.getFilters();
   }
 
   @Public()
   @Get(':id')
+  @ApiOperation({ summary: 'Afficher une formation' })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: JwtPayload | undefined,
@@ -39,6 +59,11 @@ export class CoursesController {
   }
 
   @Post(':id/enroll')
+  @ApiOperation({ summary: 'S’inscrire à une formation' })
+  @ApiCookieAuth()
+  @ApiUnauthorizedResponse({
+    description: 'Session absente, expirée ou révoquée',
+  })
   enroll(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: JwtPayload,

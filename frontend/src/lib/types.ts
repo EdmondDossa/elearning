@@ -18,6 +18,11 @@ export interface CourseSummary {
   description: string;
   thumbnailUrl: string | null;
   modulesCount: number;
+  learning: {
+    status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+    completedModules: number;
+    progress: number;
+  } | null;
 }
 
 export interface CourseFilters {
@@ -25,7 +30,7 @@ export interface CourseFilters {
   levels: Level[];
 }
 
-export interface CourseDetail extends Omit<CourseSummary, "modulesCount"> {
+export interface CourseDetail extends Omit<CourseSummary, "modulesCount" | "learning"> {
   enrolled: boolean;
   progress: number | null;
   modules: {

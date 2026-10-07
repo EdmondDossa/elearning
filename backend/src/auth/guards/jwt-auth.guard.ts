@@ -5,14 +5,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
+import { AuthSessionService } from '../auth-session.service';
 import { AUTH_COOKIE, IS_PUBLIC_KEY } from '../auth.constants';
-import { AuthenticatedRequest, JwtPayload } from '../auth.types';
+import { AuthenticatedRequest } from '../auth.types';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
-    private readonly jwt: JwtService,
+    private readonly sessions: AuthSessionService,
     private readonly reflector: Reflector,
   ) {}
 
@@ -26,12 +26,13 @@ export class JwtAuthGuard implements CanActivate {
     const token = request.cookies?.[AUTH_COOKIE] as string | undefined;
 
     if (isPublic) {
-      // Route publique : on identifie l'utilisateur si possible, sans jamais bloquer
+      // Route publique : une session invalide est traitée comme anonyme.
       if (token) {
         try {
-          request.user = await this.jwt.verifyAsync<JwtPayload>(token);
-        } catch {
-          /* token invalide ou expiré : on continue en anonyme */
+          request.user = await this.sessions.authenticate(token);
+        } catch (error) {
+          if (!(error instanceof UnauthorizedException)) throw error;
+          /* token invalide, expiré ou révoqué : on continue en anonyme */
         }
       }
       return true;
@@ -40,9 +41,10 @@ export class JwtAuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Authentification requise');
 
     try {
-      request.user = await this.jwt.verifyAsync<JwtPayload>(token);
+      request.user = await this.sessions.authenticate(token);
       return true;
-    } catch {
+    } catch (error) {
+      if (!(error instanceof UnauthorizedException)) throw error;
       throw new UnauthorizedException('Session invalide ou expirée');
     }
   }

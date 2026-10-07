@@ -6,6 +6,7 @@ import { CourseCard } from "@/components/course-card";
 import { ErrorAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { languageLabel, LEVEL_LABELS } from "@/lib/labels";
 import { CourseFilters, CourseSummary } from "@/lib/types";
 import { useDebounce } from "@/lib/use-debounce";
@@ -22,6 +23,8 @@ export default function CoursesPage() {
 }
 
 function Catalog() {
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -32,6 +35,7 @@ function Catalog() {
 
   const [filters, setFilters] = useState<CourseFilters | null>(null);
   const [courses, setCourses] = useState<CourseSummary[] | null>(null);
+  const [coursesUserId, setCoursesUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,27 +65,39 @@ function Catalog() {
       .catch(() => setFilters(null));
   }, []);
 
-  // Rechargement des formations à chaque changement d'URL
+  // Recharger aussi après connexion/déconnexion et au retour sur l'onglet.
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-
-    api<CourseSummary[]>(`/courses${query ? `?${query}` : ""}`, {
-      signal: controller.signal,
-    })
-      .then((data) => {
-        setCourses(data);
-        setLoading(false);
+    if (authLoading) return;
+    let controller: AbortController | undefined;
+    function loadCourses() {
+      controller?.abort();
+      const request = new AbortController();
+      controller = request;
+      setLoading(true);
+      setError(null);
+      api<CourseSummary[]>(`/courses${query ? `?${query}` : ""}`, {
+        signal: request.signal,
+        cache: "no-store",
       })
-      .catch(() => {
-        if (controller.signal.aborted) return; // requête annulée volontairement
-        setError("Impossible de charger les formations.");
-        setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [query]);
+        .then((data) => {
+          if (request.signal.aborted) return;
+          setCourses(data);
+          setCoursesUserId(userId);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (request.signal.aborted) return;
+          setError("Impossible de charger les formations.");
+          setLoading(false);
+        });
+    }
+    loadCourses();
+    window.addEventListener("focus", loadCourses);
+    return () => {
+      controller?.abort();
+      window.removeEventListener("focus", loadCourses);
+    };
+  }, [query, userId, authLoading]);
 
   function resetFilters() {
     setSearch("");
@@ -181,7 +197,14 @@ function Catalog() {
               className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 transition-opacity ${loading ? "opacity-60" : ""}`}
             >
               {courses.map((c) => (
-                <CourseCard key={c.id} course={c} />
+                <CourseCard
+                  key={c.id}
+                  course={{
+                    ...c,
+                    learning: !authLoading && userId && coursesUserId === userId
+                      ? c.learning : null,
+                  }}
+                />
               ))}
             </div>
           )}

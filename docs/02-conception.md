@@ -4,6 +4,7 @@
 
 ```mermaid
 erDiagram
+    User ||--o{ AuthSession : "ouvre une session"
     User ||--o{ Enrollment : "s'inscrit"
     User ||--o{ ModuleProgress : "progresse"
     Course ||--o{ Module : contient
@@ -13,6 +14,7 @@ erDiagram
     Module ||--o{ ModuleProgress : "suivi"
 
     User { uuid id string email string passwordHash string name enum role }
+    AuthSession { uuid id uuid userId datetime createdAt datetime expiresAt }
     Course { uuid id string title string instructor string language enum level text description }
     Module { uuid id uuid courseId string title int order int durationSec string videoUrl }
     AudioTrack { uuid id uuid moduleId string language string label string url bool isDefault }
@@ -76,3 +78,28 @@ L’import de fichiers est hors périmètre de l’exercice ; aucune route d’i
 n’est prévue. Voir le
 [guide d’administration](03-administration.md) pour la préparation et l’association
 des médias.
+
+## Sessions révocables et documentation interactive
+
+`AuthSession` conserve l’identifiant de session, l’utilisateur et l’expiration.
+Le JWT inclut `sid`. Chaque requête authentifiée vérifie cette session en base
+et utilise le rôle actuel de l’utilisateur. Le logout supprime la session ;
+la suppression du cookie n’est plus le seul mécanisme de déconnexion.
+
+Swagger est exposé sur `/api/docs/`, et OpenAPI sur `/api/docs-json`, sauf si
+`SWAGGER_ENABLED=false`. Voir [le fonctionnement et les tests](04-sessions-swagger-tests.md).
+
+## Progression dans le catalogue
+
+`GET /api/courses` reste public. Avec une session valide, chaque formation suivie
+contient `learning: { status, completedModules, progress }`. Sinon, `learning`
+vaut `null`. Les valeurs de `status` sont `NOT_STARTED`, `IN_PROGRESS` et
+`COMPLETED`. Une position sauvegardée positive ou un module terminé marque
+le début ; une formation est terminée uniquement si elle possède au moins
+un module et que tous ses modules sont terminés.
+
+Les inscriptions et progressions sont récupérées par lots et filtrées par
+l’utilisateur authentifié et les formations du résultat. L’API n’accepte pas
+d’identifiant utilisateur fourni par le navigateur. La réponse utilise
+`Cache-Control: private, no-store` et `Vary: Cookie`. Le frontend recharge
+lors des changements de session, de filtres et au retour sur l’onglet.

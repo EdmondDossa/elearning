@@ -31,6 +31,7 @@ model User {
   name         String
   role         Role             @default(USER)
   createdAt    DateTime         @default(now())
+  sessions     AuthSession[]
   enrollments  Enrollment[]
   progress     ModuleProgress[]
 }
@@ -110,4 +111,15 @@ model ModuleProgress {
   updatedAt   DateTime  @updatedAt
 
   @@id([userId, moduleId])
+}
+
+// Le JWT n'est accepté que tant que sa session existe et n'a pas expiré.
+model AuthSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId, expiresAt])
 }
